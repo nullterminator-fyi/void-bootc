@@ -1,0 +1,18 @@
+pkgname=composefs
+version=1.0.8
+revision=1
+build_style=meson
+#build_helper=meson
+hostmakedepends="pkg-config"
+makedepends="openssl-devel fuse3-devel"
+#depends="fuse3 libcrypto3"
+short_desc="A file system for mounting container images"
+maintainer="Null Terminator <nullterminator0@protonmail.com>"
+license="LGPL-2.1-or-later AND (BSD-2-Clause OR GPL-2.0-or-later) AND (GPL-2.0-only OR Apache-2.0) AND GPL-3.0-or-later"
+homepage="https://github.com/containers/composefs"
+distfiles="https://github.com/containers/composefs/archive/v${version}.tar.gz"
+checksum=2b2b11f9a25744c82e9e12b098eefd0ab42d56ae6322634c15f966b3a64926ef
+
+post_install() {
+    vlicense BSD-2-Clause.txt
+}
