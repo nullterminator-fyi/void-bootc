@@ -1,0 +1,5 @@
+#!/usr/bin/sh
+if [ -e /run/ostree-booted ]
+then
+   /usr/bin/bootc upgrade --apply --quiet
+fi

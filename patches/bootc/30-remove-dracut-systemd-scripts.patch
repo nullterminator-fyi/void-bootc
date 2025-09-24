@@ -1,0 +1,17 @@
+diff --git a/crates/initramfs/dracut/module-setup.sh b/crates/initramfs/dracut/module-setup.sh
+index 39dfe238..d430ce28 100755
+--- a/crates/initramfs/dracut/module-setup.sh
++++ b/crates/initramfs/dracut/module-setup.sh
+@@ -11,8 +11,8 @@ depends() {
+ install() {
+     local service=bootc-root-setup.service
+     dracut_install /usr/lib/bootc/initramfs-setup
+-    inst_simple "${systemdsystemunitdir}/${service}"
+-    mkdir -p "${initdir}${systemdsystemconfdir}/initrd-root-fs.target.wants"
+-    ln_r "${systemdsystemunitdir}/${service}" \
+-        "${systemdsystemconfdir}/initrd-root-fs.target.wants/${service}"
++#    inst_simple "${systemdsystemunitdir}/${service}"
++#    mkdir -p "${initdir}${systemdsystemconfdir}/initrd-root-fs.target.wants"
++#    ln_r "${systemdsystemunitdir}/${service}" \
++#        "${systemdsystemconfdir}/initrd-root-fs.target.wants/${service}"
+ }

@@ -1,0 +1,5 @@
+#!/bin/sh
+exec 2>&1
+set -e
+/usr/bin/bootupctl update
+exec chpst -b bootupctl pause

@@ -1,0 +1,21 @@
+diff --git a/crates/lib/src/reboot.rs b/crates/lib/src/reboot.rs
+index 63d7a5fe..20995d98 100644
+--- a/crates/lib/src/reboot.rs
++++ b/crates/lib/src/reboot.rs
+@@ -12,13 +12,10 @@ pub(crate) fn reboot() -> anyhow::Result<()> {
+     // Flush output streams
+     let _ = std::io::stdout().flush();
+     let _ = std::io::stderr().flush();
+-    Command::new("systemd-run")
++    Command::new("shutdown")
+         .args([
+-            "--quiet",
+-            "--",
+-            "systemctl",
+-            "reboot",
+-            "--message=Initiated by bootc",
++            "-r",
++            "Initiated by bootc", // Message is the default argument for the shutdown command
+         ])
+         .run_capture_stderr()?;
+     // We expect to be terminated via SIGTERM here. We sleep
