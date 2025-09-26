@@ -2,12 +2,16 @@ image_name := env("BUILD_IMAGE_NAME", "void-bootc")
 image_tag := env("BUILD_IMAGE_TAG", "latest")
 base_dir := env("BUILD_BASE_DIR", ".")
 filesystem := env("BUILD_FILESYSTEM", "ext4")
+root_access := env("ROOT_ACCESS_UTIL", "sudo")
+
+build-test $image_name=image_name:
+    podman build "${image_name}:latest"
 
 build-containerfile $image_name=image_name:
-    sudo podman build -t "${image_name}:latest" .
+    {{root_access}} podman build -t "${image_name}:latest" .
 
 bootc *ARGS:
-    sudo podman run \
+    {{root_access}} podman run \
         --rm --privileged --pid=host \
         -it \
         -v /etc/containers:/etc/containers:Z \
