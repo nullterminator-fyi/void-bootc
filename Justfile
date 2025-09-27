@@ -11,10 +11,10 @@ bootc *ARGS:
     {{root_access}} podman run \
         --rm --privileged --pid=host \
         -it \
-        -v /etc/containers:/etc/containers:Z \
         -v /var/lib/containers:/var/lib/containers:Z \
         -v /dev:/dev \
         -e RUST_LOG=trace \
+        -v "./bogus.json:/etc/containers/policy.json" \
         -v "{{base_dir}}:/data" \
         --security-opt label=type:unconfined_t \
         "{{image_name}}:latest" bootc {{ARGS}}
