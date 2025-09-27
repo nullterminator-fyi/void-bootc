@@ -1,19 +1,3 @@
-# Before anything, I should properly build a custom composefs file in a custom rootful container, due to the nature of void-src.
-FROM ghcr.io/void-linux/void-glibc-full:latest AS packager
-COPY ./extra-pkg /extra-pkg
-RUN xbps-install -S -y git bash
-
-# Fetch the repo(I NEED TO CACHE THIS SO BADLY)
-RUN git clone https://github.com/void-linux/void-packages.git && \
-  cd void-packages
-
-RUN cd void-packages && \
-  cp -r /extra-pkg/composefs/ srcpkgs/ && \
-  echo XBPS_CHROOT_CMD=uunshare >> etc/conf && \
-  echo XBPS_ALLOW_CHROOT_BREAKOUT=yes >> etc/conf && \
-  ./xbps-src pkg composefs
-
-# Now to the actual image...
 FROM ghcr.io/void-linux/void-glibc:latest AS builder
 
 ENV BOOTC_ROOTFS_MOUNTPOINT=/mnt
@@ -27,21 +11,21 @@ RUN cp -r /var/db/xbps/keys/* "${BOOTC_ROOTFS_MOUNTPOINT}"/var/db/xbps/keys/
 RUN XBPS_TARGET_ARCH="x86_64" \
 xbps-install -S -y -r "${BOOTC_ROOTFS_MOUNTPOINT}" -R "https://repo-ci.voidlinux.org/current/" \
   base-system \
+  whois \
+  strace \
+  shadow \
   skopeo \
   systemd-boot \
   ostree && \
   xbps-reconfigure -fa -r ${BOOTC_ROOTFS_MOUNTPOINT}
 # TODO: composefs
 
-# Installing composefs from the packager stage
-RUN --mount=type=cache,dst=/tmp,from=packager,source=/void-packages/hostdir/binpkgs cd /tmp && \
-  XBPS_TARGET_ARCH="x86_64" xbps-install --repository . -S -y -r "${BOOTC_ROOTFS_MOUNTPOINT}" composefs
-
 # Prepare the builder
 RUN XBPS_TARGET_ARCH="x86_64" \
 xbps-install -S -y -R "https://repo-ci.voidlinux.org/current/" \
   base-devel \
-#  shadow \
+  strace \
+  shadow \
   ostree \
   git \
   curl \
@@ -60,7 +44,6 @@ xbps-install -S -y -R "https://repo-ci.voidlinux.org/current/" \
   fuse3-devel \
   meson \
   go-md2man \
-  whois \
   findutils
 
 # Copy extra files
@@ -85,7 +68,7 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root \
 
 # Set up dracut
 RUN sh -c 'export KERNEL_VERSION="$(basename "$(find ${BOOTC_ROOTFS_MOUNTPOINT}/usr/lib/modules -maxdepth 1 -type d | grep -v -E "*.img" | tail -n 1)")" && \
-    dracut --force -r "${BOOTC_ROOTFS_MOUNTPOINT}" --no-hostonly --reproducible --zstd --verbose --kver "$KERNEL_VERSION"  "${BOOTC_ROOTFS_MOUNTPOINT}/usr/lib/modules/$KERNEL_VERSION/initramfs.img" && \
+    dracut --add debug --force -r "${BOOTC_ROOTFS_MOUNTPOINT}" --no-hostonly --reproducible --zstd --verbose --kver "$KERNEL_VERSION"  "${BOOTC_ROOTFS_MOUNTPOINT}/usr/lib/modules/$KERNEL_VERSION/initramfs.img" && \
     cp ${BOOTC_ROOTFS_MOUNTPOINT}/boot/vmlinuz-$KERNEL_VERSION "${BOOTC_ROOTFS_MOUNTPOINT}/usr/lib/modules/$KERNEL_VERSION/vmlinuz"'
 
 # Move the services
@@ -95,8 +78,9 @@ RUN cd /extras/services && \
     mkdir ${BOOTC_ROOTFS_MOUNTPOINT}/etc/sv/bootloader-update/ && \
     install -Dpm0755 -t ${BOOTC_ROOTFS_MOUNTPOINT}/etc/sv/bootloader-update/ ./bootupd/bootloader-update/*
 
-# Set a temporary password
-# RUN usermod --root "${BOOTC_ROOTFS_MOUNTPOINT}" -p "changeme" root
+# Setup a temporary root passwd (changeme) for dev purposes
+# TODO: Replace this for a more robust option when in prod
+RUN usermod -p "$(echo "changeme" | mkpasswd -s)" root
 
 # Update useradd default to /var/home instead of /home for User Creation
 RUN sed -i 's|^HOME=.*|HOME=/var/home|' "${BOOTC_ROOTFS_MOUNTPOINT}/etc/default/useradd"

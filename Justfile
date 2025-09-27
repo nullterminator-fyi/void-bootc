@@ -4,9 +4,6 @@ base_dir := env("BUILD_BASE_DIR", ".")
 filesystem := env("BUILD_FILESYSTEM", "ext4")
 root_access := env("ROOT_ACCESS_UTIL", "sudo")
 
-build-test $image_name=image_name:
-    podman build "${image_name}:latest"
-
 build-containerfile $image_name=image_name:
     {{root_access}} podman build -t "${image_name}:latest" .
 
