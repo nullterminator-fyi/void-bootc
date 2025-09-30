@@ -56,7 +56,7 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root \
     git clone https://github.com/bootc-dev/bootc.git /tmp/bootc && \
     cd /tmp/bootc && \
     # Pin a specific commit for now
-    git checkout b01098312a255b04be4d38081617fb9dd37cba1f && \
+    git checkout 8cf097171969f6fbee9a82225789c041b29221ff && \
     git apply /extras/patches/bootc/* && \
     CARGO_FEATURES="composefs-backend" PATH="/root/.cargo/bin:$PATH" make bin && \
     make DESTDIR=${BOOTC_ROOTFS_MOUNTPOINT} install-all && \
