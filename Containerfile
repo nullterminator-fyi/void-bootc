@@ -1,7 +1,48 @@
-FROM docker.io/library/ubuntu:questing AS kernel
+#             _     _        _                 _       
+#            (_)   | |      | |               | |      
+# __   _____  _  __| |______| |__   ___   ___ | |_ ___ 
+# \ \ / / _ \| |/ _` |______| '_ \ / _ \ / _ \| __/ __|
+#  \ V / (_) | | (_| |      | |_) | (_) | (_) | || (__ 
+#   \_/ \___/|_|\__,_|      |_.__/ \___/ \___/ \__\___|
+#                                                     
+#                   By Null Terminator                 
+#
+# The goal of this OCI image is to have a minimal base
+# for a bootable system that anyone can use as a ground
+# for a Void based atomic distro. It will have it's own
+# kernel build with FS_VERITY enabled, so keep that in
+# mind if you want to use a different kernel.
+#
+# The image will be updated every week by GitHub actions.
 
-RUN apt update -y && apt install -y linux-image-generic
+#
+# Stage 0: Package necessary software
+#
+FROM ghcr.io/void-linux/void-glibc:latest AS packager
 
+# Clone the void-packages repo
+RUN xbps-install -S -y git && \
+    git clone https://github.com/void-linux/void-packages.git
+
+WORKDIR void-packages
+
+# Bring in the package recipes and set the configuration
+RUN --mount=type=bind,dst=/extra-pkg,source=extra-pkg/ \
+    cp -r /extra-pkg/* srcpkgs/ && \
+    echo XBPS_CHROOT_CMD=uunshare >> etc/conf && \
+    echo XBPS_ALLOW_CHROOT_BREAKOUT=yes >> etc/conf && \
+
+# Build the packages, and cache mount them
+RUN --mount=type=cache,dst=hostdir/binpkgs \
+    ./xbps-src pkg linux6.12 && \
+    ./xbps-src pkg composefs && \
+    ./xbps-src pkg bootupd && \
+    ./xbps-src pkg skopeo && \
+    ./xbps-src pkg bootc
+
+#
+# Stage 1: Set up the image
+#
 FROM ghcr.io/void-linux/void-glibc:latest AS builder
 
 ENV BOOTC_ROOTFS_MOUNTPOINT=/mnt
@@ -75,6 +116,10 @@ RUN sh -c 'export KERNEL_VERSION="$(basename "$(find ${BOOTC_ROOTFS_MOUNTPOINT}/
     dracut --add debug --force -r "${BOOTC_ROOTFS_MOUNTPOINT}" --no-hostonly --reproducible --zstd --verbose --kver "$KERNEL_VERSION" "${BOOTC_ROOTFS_MOUNTPOINT}/usr/lib/modules/$KERNEL_VERSION/initramfs.img" && \
     cp ${BOOTC_ROOTFS_MOUNTPOINT}/boot/vmlinuz-$KERNEL_VERSION "${BOOTC_ROOTFS_MOUNTPOINT}/usr/lib/modules/$KERNEL_VERSION/vmlinuz"'
 
+# patch core-services to not remount root directory as read-write
+RUN cd ${BOOTC_ROOTFS_MOUNTPOINT}/etc/runit/ && \
+    git apply /extras/patches/runit-void/*
+
 COPY ./services /extras/services
 # Move the services
 RUN cd /extras/services && \
@@ -85,7 +130,7 @@ RUN cd /extras/services && \
 
 # Setup a temporary root passwd (changeme) for dev purposes
 # TODO: Replace this for a more robust option when in prod
-RUN usermod -p '$6$AJv9RHlhEXO6Gpul$5fvVTZXeM0vC03xckTIjY8rdCofnkKSzvF5vEzXDKAby5p3qaOGTHDypVVxKsCE3CbZz7C3NXnbpITrEUvN/Y/' root
+RUN usermod -p "$(echo "changeme" | mkpasswd -s)" root
 
 # Update useradd default to /var/home instead of /home for User Creation
 RUN sed -i 's|^HOME=.*|HOME=/var/home|' "${BOOTC_ROOTFS_MOUNTPOINT}/etc/default/useradd"
